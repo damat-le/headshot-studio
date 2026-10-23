@@ -1,4 +1,4 @@
-"""Local web frontend for color_background: pick a photo, pick a colour, render.
+"""Local web frontend for headshot-studio: pick a photo, pick a colour, render.
 
 Run with `make ui`. Serves on 127.0.0.1 only; renders are saved to _logs/.
 """
@@ -115,7 +115,7 @@ def main() -> None:
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     url = f"http://127.0.0.1:{port}/"
-    print(f"color-background UI at {url}  (Ctrl+C to stop)")
+    print(f"headshot-studio UI at {url}  (Ctrl+C to stop)")
     if "--no-browser" not in sys.argv:
         webbrowser.open(url)
     try:
