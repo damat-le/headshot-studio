@@ -3,7 +3,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from color_background.studio import PRESETS, StudioSettings, parse_hex, render, resolve_color
+from color_background.studio import MODEL, MODELS, PRESETS, StudioSettings, parse_hex, render, resolve_color
 
 
 def main() -> None:
@@ -21,6 +21,8 @@ def main() -> None:
                    help="backdrop falloff: 0 = flat, 1 = default, 2 = dark corners")
     p.add_argument("--shadow", type=float, default=0.10)
     p.add_argument("--white-balance", type=float, default=0.7)
+    p.add_argument("--model", default=MODEL, choices=list(MODELS),
+                   help="cutout model: isnet-general-use (fast, default) or birefnet-portrait (best for hair)")
     p.add_argument("--seed", type=int, default=1)
     args = p.parse_args()
 
@@ -33,6 +35,7 @@ def main() -> None:
         shadow=args.shadow,
         white_balance=args.white_balance,
         seed=args.seed,
+        model=args.model,
     )
     out, (cx, cy) = render(Image.open(args.input), settings)
     args.output.parent.mkdir(parents=True, exist_ok=True)

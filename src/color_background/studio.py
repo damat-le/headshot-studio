@@ -5,10 +5,13 @@ randomness (backdrop texture and film grain) comes from a seeded generator.
 """
 
 from dataclasses import dataclass
+from functools import cache
 
 import numpy as np
 from PIL import Image
+from pymatting import estimate_foreground_ml
 from rembg import new_session, remove
+from rembg.sessions import sessions as rembg_sessions
 from scipy.ndimage import gaussian_filter
 
 MODEL = "isnet-general-use"
@@ -29,6 +32,7 @@ class StudioSettings:
     texture: float = 0.05  # backdrop mottling
     grain: float = 0.012  # film grain standard deviation
     seed: int = 1
+    model: str = MODEL  # cutout model, one of MODELS
 
 
 def parse_hex(value: str) -> Color:
@@ -73,17 +77,52 @@ def resolve_color(value: str) -> tuple[Color, Color]:
         raise ValueError(f"{value!r} is not a hex colour or a preset ({', '.join(PRESETS)})") from None
 
 
-def cut_out(img: Image.Image) -> np.ndarray:
-    """Return the subject as float RGBA in [0, 1], with matted hair edges."""
-    cut = remove(
-        img,
-        session=new_session(MODEL),
-        alpha_matting=True,
-        alpha_matting_foreground_threshold=240,
-        alpha_matting_background_threshold=10,
-        alpha_matting_erode_size=10,
-    )
-    return np.asarray(cut.convert("RGBA")).astype(np.float32) / 255
+@dataclass(frozen=True)
+class Model:
+    label: str
+    tag: str  # one-word role shown in the UI
+    size_mb: int  # download size
+    good_for: str
+    matting: bool  # True: refine edges with pymatting; False: the model's own mask is already fine-grained
+
+
+MODELS: dict[str, Model] = {
+    "isnet-general-use": Model(
+        "ISNet general", "Fast", 179, "Fast all-rounder. Plain walls and tidy hair.", matting=True),
+    "birefnet-portrait": Model(
+        "BiRefNet portrait", "Best quality", 973, "Best for people: curly or loose hair, busy rooms. Slower.", matting=False),
+}
+
+
+def model_downloaded(name: str) -> bool:
+    return rembg_sessions[name].resolve_existing(f"{name}.onnx") is not None
+
+
+@cache
+def _session(name: str):
+    return new_session(name)  # loads (and on first use downloads) the model once per process
+
+
+def cut_out(img: Image.Image, model: str = MODEL) -> np.ndarray:
+    """Return the subject as float RGBA in [0, 1], with clean hair edges."""
+    if model not in MODELS:
+        raise ValueError(f"unknown model {model!r}; choose one of {', '.join(MODELS)}")
+    if MODELS[model].matting:
+        cut = remove(
+            img,
+            session=_session(model),
+            alpha_matting=True,
+            alpha_matting_foreground_threshold=240,
+            alpha_matting_background_threshold=10,
+            alpha_matting_erode_size=10,
+        )
+        return np.asarray(cut.convert("RGBA")).astype(np.float32) / 255
+    # Fine-grained mask: keep it as the alpha, and only estimate the true edge colours so the old wall
+    # doesn't tint the hair.
+    rgb = np.asarray(img.convert("RGB")).astype(np.float64) / 255
+    alpha = np.asarray(remove(img, session=_session(model), only_mask=True)).astype(np.float64) / 255
+    fg = estimate_foreground_ml(rgb, alpha)
+    return np.dstack([fg, alpha]).astype(np.float32)
 
 
 def head_center(alpha: np.ndarray) -> tuple[float, float]:
@@ -101,7 +140,7 @@ def head_center(alpha: np.ndarray) -> tuple[float, float]:
 def render(img: Image.Image, s: StudioSettings) -> tuple[Image.Image, tuple[float, float]]:
     img = img.convert("RGB")
     orig = np.asarray(img).astype(np.float32) / 255
-    cut = cut_out(img)
+    cut = cut_out(img, s.model)
     fg, a = cut[..., :3], cut[..., 3:]
     H, W = a.shape[:2]
     cx, cy = s.center or head_center(a[..., 0])
