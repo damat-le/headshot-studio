@@ -1,0 +1,15 @@
+[project]
+name = "color-background"
+version = "0.1.0"
+description = "Replace a portrait's background with a studio-style coloured backdrop, deterministically."
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "numpy>=2.0",
+    "pillow>=11.0",
+    "rembg[cpu]>=2.0.66",
+    "scipy>=1.14",
+]
+
+[tool.uv]
+package = false
+cache-dir = ".cache/uv"

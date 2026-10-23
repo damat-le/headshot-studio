@@ -1,0 +1,13 @@
+# environment and caches
+.venv/
+.cache/
+__pycache__/
+*.py[cod]
+
+# rendered output
+_logs/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
