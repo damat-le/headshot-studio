@@ -1,4 +1,4 @@
-# color-background
+# headshot-studio
 
 Replace the background of a portrait with a studio-style coloured backdrop: a soft light behind the head that falls off toward the corners, a subtle shadow, and edges blended into the new colour so the subject doesn't look pasted on.
 
