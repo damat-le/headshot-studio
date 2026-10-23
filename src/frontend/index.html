@@ -131,6 +131,7 @@ let file = null, color = "sky-blue", resultUrl = null;
 function selectPreset(p) {
   color = p.name;
   $("hex").textContent = p.label;
+  $("custom").value = p.light.toLowerCase();  // the picker box shows (and starts from) the preset's colour
   document.querySelectorAll(".sw").forEach(s => s.setAttribute("aria-pressed", s.dataset.name === p.name));
 }
 function selectCustom(hex) {
