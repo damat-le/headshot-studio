@@ -7,12 +7,12 @@
 <style>
   :root {
     --bg: #f6f7f9; --panel: #ffffff; --text: #1b1f24; --muted: #667085;
-    --line: #e3e6ea; --accent: #0d4fe4; --accent-text: #ffffff; --drop: #eef2fb;
+    --line: #e3e6ea; --accent: #0d4fe4; --accent-text: #ffffff; --drop: #eef2fb; --ok: #12805c;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #222222; --panel: #313131; --text: #ececec; --muted: #adadad;
-      --line: #4a4a4a; --accent: #e6e6e6; --accent-text: #222222; --drop: #3a3a3a;
+      --line: #4a4a4a; --accent: #e6e6e6; --accent-text: #222222; --drop: #3a3a3a; --ok: #4cc38a;
     }
   }
   * { box-sizing: border-box; }
@@ -34,6 +34,20 @@
   .drop small { display: block; color: var(--muted); margin-top: 4px; }
   .file { margin-top: 10px; font-size: 13px; color: var(--muted); word-break: break-all; }
   #picker { display: none; }
+
+  .models { display: grid; gap: 8px; }
+  .model { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; text-align: left;
+           width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px;
+           background: none; color: inherit; font: inherit; cursor: pointer; }
+  .model[aria-checked="true"] { border-color: var(--text); }
+  .model svg { width: 20px; height: 20px; margin-top: 1px; }
+  .model .ok { color: var(--ok); }
+  .model .dl { color: var(--muted); }
+  .model .name { font-weight: 600; font-size: 14px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .model .tag { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 99px;
+                background: var(--drop); color: var(--muted); }
+  .model .size { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .model .good { font-size: 13px; margin-top: 3px; }
 
   .swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .sw { aspect-ratio: 1; border-radius: 8px; border: 2px solid transparent; cursor: pointer;
@@ -83,6 +97,9 @@
       </div>
       <input type="file" id="picker" accept="image/*">
       <div class="file" id="fileName"></div>
+
+      <label class="title" id="modelLabel">Cutout model</label>
+      <div class="models" id="models" role="radiogroup" aria-labelledby="modelLabel"></div>
 
       <label class="title">Backdrop colour</label>
       <div class="swatches" id="swatches"></div>
@@ -174,6 +191,35 @@ fetch("/presets").then(r => r.json()).then(list => {
   selectPreset(presets.find(p => p.name === color) || presets[0]);
 });
 $("custom").oninput = e => selectCustom(e.target.value);
+
+// Cutout model menu: a check icon means the model is on disk; a download icon means the first render downloads it.
+const ICON_OK = '<svg class="ok" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.2 10.3l2.5 2.5 5.1-5.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_DL = '<svg class="dl" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9.5m0 0l-3.6-3.6M10 12.5l3.6-3.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 14.5v1.5a1 1 0 001 1h10a1 1 0 001-1v-1.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+let models = [], model = null;
+const sizeText = mb => mb >= 1000 ? `${(mb / 1000).toFixed(1)} GB` : `${mb} MB`;
+function renderModels() {
+  $("models").innerHTML = "";
+  models.forEach(m => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "model"; b.setAttribute("role", "radio");
+    b.setAttribute("aria-checked", m.name === model);
+    b.innerHTML = `${m.downloaded ? ICON_OK : ICON_DL}
+      <span><span class="name">${m.label}<span class="tag">${m.tag}</span></span>
+      <span class="size" style="display:block">${sizeText(m.size_mb)} · ${m.downloaded ? "downloaded" : "downloads on first use"}</span>
+      <span class="good" style="display:block">${m.good_for}</span></span>`;
+    b.title = m.downloaded ? "Ready to use" : `Not downloaded yet: the first render downloads ${sizeText(m.size_mb)} once`;
+    b.onclick = () => { model = m.name; renderModels(); };
+    $("models").append(b);
+  });
+}
+function loadModels() {
+  return fetch("/models").then(r => r.json()).then(list => {
+    models = list;
+    model ??= (list.find(m => m.default) || list[0]).name;
+    renderModels();
+  });
+}
+loadModels();
 $("shadow").oninput = e => $("shadowVal").textContent = Number(e.target.value).toFixed(2);
 $("gradient").oninput = e => { $("gradientVal").textContent = Number(e.target.value).toFixed(2); paintSwatches(); };
 
@@ -197,9 +243,11 @@ $("go").onclick = async () => {
   $("go").disabled = true;
   $("after").innerHTML = '<div class="spin"></div>';
   const t0 = performance.now();
-  const tick = setInterval(() => status(`Rendering… ${((performance.now() - t0) / 1000).toFixed(0)} s`), 250);
+  const m = models.find(x => x.name === model);
+  const what = m && !m.downloaded ? `Downloading ${m.label} (${sizeText(m.size_mb)}, one time) and rendering…` : "Rendering…";
+  const tick = setInterval(() => status(`${what} ${((performance.now() - t0) / 1000).toFixed(0)} s`), 250);
   try {
-    const q = new URLSearchParams({ name: file.name, color, gradient: $("gradient").value, shadow: $("shadow").value });
+    const q = new URLSearchParams({ name: file.name, color, model, gradient: $("gradient").value, shadow: $("shadow").value });
     const r = await fetch(`/render?${q}`, { method: "POST", body: file });
     if (!r.ok) throw new Error(await r.text());
     const blob = await r.blob();
@@ -208,13 +256,14 @@ $("go").onclick = async () => {
     $("after").innerHTML = ""; const img = new Image(); img.src = resultUrl; $("after").append(img);
     const out = r.headers.get("X-Output");
     Object.assign($("download"), { href: resultUrl, download: out.split("/").pop(), hidden: false });
-    $("meta").textContent = `Saved to ${out} · light centred at (${r.headers.get("X-Center")}) · ${color}`;
+    $("meta").textContent = `Saved to ${out} · light centred at (${r.headers.get("X-Center")}) · ${color} · ${m ? m.label : model}`;
     status(`Done in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
   } catch (e) {
     $("after").textContent = "Render failed";
     status(e.message, true);
   } finally {
     clearInterval(tick); $("go").disabled = false;
+    loadModels();  // a first render may have just downloaded the model
   }
 };
 </script>

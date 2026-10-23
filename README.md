@@ -43,12 +43,24 @@ The result goes to `_logs/photo-bg.jpg` unless you pass `OUT=...`.
 | `--light`, `--dark` | from `COLOR` | Set the centre and corner colours exactly |
 | `--center X Y` | auto | Where the light sits, in pixels; detected from the head by default |
 | `--white-balance` | `0.7` | How much of the original light's colour cast to remove |
+| `--model` | `isnet-general-use` | Cutout model, see below |
 
 Presets: `sky-blue`, `teal`, `sage`, `amber`, `artificialy-blue`, `slate-blue`, `lilac`, `charcoal`.
 
+## Cutout models
+
+Two models, picked in the web interface's **Cutout model** menu or with `--model`:
+
+| Model | Role | Download | Good for |
+|---|---|---|---|
+| `isnet-general-use` | Fast (default) | 179 MB | Plain walls and tidy hair. About 6–10 s for a 3 MP photo. |
+| `birefnet-portrait` | Best quality | 973 MB | Curly or loose hair, busy rooms, objects near the person. About 15–17 s. |
+
+Each model downloads once, on first use, into `.cache/rembg/`. In the menu, a check icon means it is already downloaded.
+
 ## How it works
 
-1. **Cutout:** [rembg](https://github.com/danielgatis/rembg) with the `isnet-general-use` model, plus alpha matting for hair edges.
+1. **Cutout:** [rembg](https://github.com/danielgatis/rembg). ISNet's mask is refined with alpha matting for hair edges; BiRefNet's mask is already fine-grained, so only the edge colours are cleaned.
 2. **Colour correction:** if the original wall is near-neutral, its tint is treated as the light's colour cast and mostly removed from the subject. Coloured walls are left alone.
 3. **Backdrop:** a radial gradient between a light and a dark tone, centred behind the head, with faint texture.
 4. **Shadow and light wrap:** a soft offset shadow on the backdrop, and the backdrop colour blended into the subject's outline.

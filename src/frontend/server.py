@@ -16,7 +16,9 @@ from urllib.parse import parse_qs, urlparse
 
 from PIL import Image, ImageOps
 
-from color_background.studio import PRESETS, StudioSettings, parse_hex, render, resolve_color
+from color_background.studio import (
+    MODEL, MODELS, PRESETS, StudioSettings, model_downloaded, parse_hex, render, resolve_color,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 LOGS = ROOT / "_logs"
@@ -39,6 +41,11 @@ class Handler(BaseHTTPRequestHandler):
             rows = [{"name": k, "label": label, "light": "#%02X%02X%02X" % light, "dark": "#%02X%02X%02X" % dark}
                     for k, (label, light, dark) in PRESETS.items()]
             return self._send(200, "application/json", json.dumps(rows).encode())
+        if path == "/models":
+            rows = [{"name": k, "label": m.label, "tag": m.tag, "size_mb": m.size_mb, "good_for": m.good_for,
+                     "downloaded": model_downloaded(k), "default": k == MODEL}
+                    for k, m in MODELS.items()]
+            return self._send(200, "application/json", json.dumps(rows).encode())
         self.send_error(404)
 
     def do_POST(self) -> None:
@@ -56,7 +63,10 @@ class Handler(BaseHTTPRequestHandler):
                 dark=parse_hex(q["dark"]) if q.get("dark") else dark,
                 gradient=float(q.get("gradient", 1.0)),
                 shadow=float(q.get("shadow", 0.10)),
+                model=q.get("model", MODEL),
             )
+            if settings.model not in MODELS:
+                raise ValueError(f"unknown model {settings.model!r}")
             img = ImageOps.exif_transpose(Image.open(io.BytesIO(self.rfile.read(length))))
         except Exception as e:  # bad colour, bad number or unreadable image
             return self._error(400, str(e))
@@ -69,7 +79,7 @@ class Handler(BaseHTTPRequestHandler):
         suffix = "".join(
             f"-{tag}{val:g}" for tag, val, default in
             (("g", settings.gradient, 1.0), ("s", settings.shadow, 0.10)) if val != default
-        )
+        ) + ("" if settings.model == MODEL else f"-{settings.model.split('-')[0]}")
         dest = LOGS / f"{safe_stem(q.get('name', 'photo'))}-{safe_stem(q.get('color', '').lower())}{suffix}.jpg"
         out.save(dest, quality=95)
         sys.stderr.write(f"rendered {dest.relative_to(ROOT)} in {elapsed:.1f} s\n")
