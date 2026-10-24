@@ -30,6 +30,15 @@
 
   #picker { display: none; }
 
+  /* Foldable model panel: folded, the header still shows the selected model */
+  .fold summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
+  .fold summary::-webkit-details-marker { display: none; }
+  .fold summary .title { font-weight: 600; font-size: 13px; }
+  .fold .current { display: flex; align-items: center; gap: 6px; margin-left: auto; font-size: 13px; color: var(--muted); }
+  .fold .current svg { width: 16px; height: 16px; }
+  .fold .chev { width: 18px; height: 18px; color: var(--muted); transition: transform .15s; flex: none; }
+  .fold[open] .chev { transform: rotate(180deg); }
+  .fold[open] summary { margin-bottom: 10px; }
   .models { display: grid; gap: 8px; }
   .model { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; text-align: left;
            width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px;
@@ -133,10 +142,14 @@
       </div>
     </div>
 
-    <div class="panel">
-      <label class="title" id="modelLabel">Cutout model</label>
+    <details class="panel fold" id="modelPanel">
+      <summary>
+        <span class="title" id="modelLabel">Cutout model</span>
+        <span class="current" id="modelCurrent"></span>
+        <svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </summary>
       <div class="models" id="models" role="radiogroup" aria-labelledby="modelLabel"></div>
-    </div>
+    </details>
 
     <div class="actions">
       <button class="go" id="go" disabled>Render</button>
@@ -231,7 +244,17 @@ function renderModels() {
     b.onclick = () => { model = m.name; renderModels(); };
     $("models").append(b);
   });
+  const cur = models.find(m => m.name === model);
+  if (cur) {
+    $("modelCurrent").innerHTML = `${cur.downloaded ? ICON_OK : ICON_DL}${cur.label}`;
+    $("modelCurrent").title = `${cur.tag} · ${sizeText(cur.size_mb)} · ${cur.downloaded ? "downloaded" : "downloads on first use"}`;
+  }
 }
+// Folded by default; remember the viewer's choice (a convenience only, so storage errors are ignored)
+try { $("modelPanel").open = localStorage.getItem("modelPanelOpen") === "1"; } catch {}
+$("modelPanel").addEventListener("toggle", () => {
+  try { localStorage.setItem("modelPanelOpen", $("modelPanel").open ? "1" : "0"); } catch {}
+});
 function loadModels() {
   return fetch("/models").then(r => r.json()).then(list => {
     models = list;
