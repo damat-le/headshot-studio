@@ -63,6 +63,7 @@ class Handler(BaseHTTPRequestHandler):
                 dark=parse_hex(q["dark"]) if q.get("dark") else dark,
                 gradient=float(q.get("gradient", 1.0)),
                 shadow=float(q.get("shadow", 0.10)),
+                white_balance=min(1.0, max(0.0, float(q.get("white_balance", 0.7)))),
                 model=q.get("model", MODEL),
             )
             if settings.model not in MODELS:
@@ -78,7 +79,7 @@ class Handler(BaseHTTPRequestHandler):
         LOGS.mkdir(exist_ok=True)
         suffix = "".join(
             f"-{tag}{val:g}" for tag, val, default in
-            (("g", settings.gradient, 1.0), ("s", settings.shadow, 0.10)) if val != default
+            (("g", settings.gradient, 1.0), ("s", settings.shadow, 0.10), ("wb", settings.white_balance, 0.7)) if val != default
         ) + ("" if settings.model == MODEL else f"-{settings.model.split('-')[0]}")
         dest = LOGS / f"{safe_stem(q.get('name', 'photo'))}-{safe_stem(q.get('color', '').lower())}{suffix}.jpg"
         out.save(dest, quality=95)
