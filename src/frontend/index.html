@@ -61,6 +61,10 @@
   button.go { margin-top: 16px; width: 100%; padding: 11px; border: 0; border-radius: 8px;
               background: var(--accent); color: var(--accent-text); font-weight: 600; font-size: 15px; cursor: pointer; }
   button.go:disabled { opacity: .5; cursor: default; }
+  /* Render stays in reach: pinned to the bottom of the window when the settings are taller than the screen */
+  .actions { position: sticky; bottom: 0; z-index: 1; margin-top: 4px; padding: 12px 0 8px;
+             background: linear-gradient(to bottom, transparent, var(--bg) 12px); }
+  .actions button.go { margin-top: 0; }
   .status { min-height: 20px; margin-top: 10px; font-size: 13px; color: var(--muted); }
   .status.err { color: #d92d20; }
 
@@ -134,8 +138,10 @@
       <div class="models" id="models" role="radiogroup" aria-labelledby="modelLabel"></div>
     </div>
 
-    <button class="go" id="go" disabled>Render</button>
-    <div class="status" id="status"></div>
+    <div class="actions">
+      <button class="go" id="go" disabled>Render</button>
+      <div class="status" id="status"></div>
+    </div>
   </section>
 
   <section>
