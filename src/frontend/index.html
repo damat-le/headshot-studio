@@ -96,9 +96,15 @@
   .photo.over { border-style: dashed; }
   .photo .prompt strong { color: var(--accent); }
   .photo .prompt small { display: block; margin-top: 4px; }
-  .photo .remove { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%;
-                   border: 0; background: rgba(0, 0, 0, .6); color: #fff; font-size: 18px; line-height: 30px;
-                   cursor: pointer; opacity: 0; transition: opacity .15s; }
+  .photo .remove { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; padding: 0;
+                   display: grid; place-items: center; border-radius: 50%; color: #fff; cursor: pointer;
+                   background: rgba(20, 20, 20, .5); border: 1px solid rgba(255, 255, 255, .2);
+                   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+                   box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+                   opacity: 0; transition: opacity .15s, background .15s, transform .15s; }
+  .photo .remove svg { width: 14px; height: 14px; }
+  .photo .remove:hover { background: rgba(20, 20, 20, .75); transform: scale(1.06); }
+  .photo .remove:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .photo:hover .remove, .photo .remove:focus-visible { opacity: 1; }
   @media (hover: none) { .photo .remove { opacity: 1; } }  /* touch screens can't hover */
   .meta { margin-top: 12px; font-size: 13px; color: var(--muted); }
@@ -288,7 +294,8 @@ function pick(f) {
   photo.innerHTML = "";
   const img = new Image(); img.src = photoUrl; img.alt = f.name;
   const x = document.createElement("button");
-  x.className = "remove"; x.type = "button"; x.textContent = "×";
+  x.className = "remove"; x.type = "button";
+  x.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8"/></svg>';
   x.title = "Remove photo"; x.setAttribute("aria-label", "Remove photo");
   x.onclick = e => { e.stopPropagation(); removePhoto(); };
   photo.append(img, x);
