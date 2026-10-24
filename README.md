@@ -4,7 +4,7 @@ Replace the background of a portrait with a studio-style coloured backdrop: a so
 
 The output is deterministic: the same photo and settings always give the same image.
 
-![The web interface: photo picker, colour presets, gradient and shadow sliders, with the original and the result side by side](docs/interface.png)
+![The web interface: photo picker, colour presets, gradient and shadow sliders, with the original and the result side by side](_assets/interface.png)
 
 ## Setup
 
